@@ -1,0 +1,60 @@
+# =====================================================================
+# docker-compose для папки infra/. Запускать ИЗ ЭТОЙ ПАПКИ:  cd infra
+#   Только база (разработка):   docker compose up -d db
+#   Всё целиком:                docker compose up -d --build
+#   Статус контейнеров:         docker compose ps
+#   Логи:                       docker compose logs -f backend
+#   Остановить:                 docker compose down       (данные БД сохраняются)
+#   Остановить и стереть БД:    docker compose down -v    (осторожно!)
+# Значения ${...} читаются из infra/.env (шаблон: infra/.env.example).
+# Пути build ведут в ../backend, потому что compose лежит на уровень ниже.
+# =====================================================================
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: mailforge-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend                  # папка с Dockerfile и pom.xml
+    container_name: mailforge-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      ADMIN_LOGIN: ${ADMIN_LOGIN}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+  # Фронтенд подключим позже:
+  # frontend:
+  #   build:
+  #     context: ../frontend
+  #   depends_on: [backend]
+  #   ports: ["80:80"]
+
+volumes:
+  pgdata:
+
+  
