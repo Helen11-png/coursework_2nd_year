@@ -1,0 +1,5 @@
+# Профиль dev: больше логов для разработки.
+logging:
+  level:
+    com.mailforge: DEBUG
+    org.hibernate.SQL: DEBUG
