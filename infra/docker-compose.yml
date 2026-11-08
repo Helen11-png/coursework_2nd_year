@@ -47,12 +47,15 @@ services:
     ports:
       - "${APP_PORT:-8080}:8080"
 
-  # Фронтенд подключим позже:
-  # frontend:
-  #   build:
-  #     context: ../frontend
-  #   depends_on: [backend]
-  #   ports: ["80:80"]
+  frontend:
+    build:
+      context: ../frontend
+    container_name: mailforge-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
 
 volumes:
   pgdata:
