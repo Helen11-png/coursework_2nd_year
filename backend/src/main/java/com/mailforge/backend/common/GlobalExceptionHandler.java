@@ -11,8 +11,9 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-/** Превращает любые исключения в ответ единого формата ApiError. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -23,7 +24,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus()).body(ApiError.of(ex.getCode(), ex.getMessage()));
     }
 
-    /** Ошибки проверки полей запроса (@Valid): 400 со списком полей. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         List<ApiError.FieldIssue> fields = ex.getBindingResult().getFieldErrors().stream()
@@ -40,7 +40,6 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("FORBIDDEN", "Недостаточно прав"));
     }
 
-    /** Всё остальное. Стандартные ошибки Spring (404, 405 и т.д.) сохраняют свой код. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleOther(Exception ex) {
         if (ex instanceof ErrorResponse er) {
@@ -51,4 +50,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiError.of("INTERNAL_ERROR", "Внутренняя ошибка сервера"));
     }
+
+   @ExceptionHandler(HttpMessageNotReadableException.class)
+   public ResponseEntity<ApiError> handleMalformedBody(HttpMessageNotReadableException ex) {
+       return ResponseEntity.badRequest()
+               .body(ApiError.of("MALFORMED_REQUEST", "Некорректное тело запроса"));
+   }
+
+   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+   public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+       return ResponseEntity.badRequest()
+               .body(ApiError.of("INVALID_PARAMETER", "Неверное значение параметра: " + ex.getName()));
+   }
 }
